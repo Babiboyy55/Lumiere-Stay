@@ -1,0 +1,215 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Lumiere.DTO.Unit;
+using Lumiere.Models;
+
+namespace Lumiere.Repositories
+{
+    public class UnitRepository : IUnitRepository
+    {
+        private readonly ProjectContext Context;
+        private readonly UserManager<ApplicationUser> userManager;
+        private readonly ICloudinaryRepository cloudinaryRepository;
+        private readonly IAdvertisementRepository advertisementRepository;
+
+        public UnitRepository(ProjectContext _Context, UserManager<ApplicationUser> userManager, ICloudinaryRepository _cloudinaryRepository, IAdvertisementRepository _advertisementRepository)
+        {
+            Context = _Context;
+            this.userManager = userManager;
+            cloudinaryRepository=_cloudinaryRepository;
+            advertisementRepository = _advertisementRepository;     
+        }
+
+
+        #region GetAll
+        public List<AllUnit> GetAll(string ownerId)
+        {
+            List<Unit> units = Context.Units
+                .Include(u => u.Maintenances)
+                .Include(u => u.addvertisement)
+                .Where(u => u.ownerId == ownerId && !u.isDeleted).ToList();
+
+            var result = units.Select(u => new AllUnit
+            {
+                id = u.id,
+                status = u.status,
+                type = u.type,
+                street = u.street,
+                area = u.area,
+                gasNum = u.gasNum,
+                waterNum = u.waterNum,
+                electricityNum = u.electricityNum,
+                flatNumber = u.flatNumber,
+                buildingNumber = u.buildingNumber,
+                city = u.city,
+                image1 = u.image1,
+                image2 = u.image2,
+                image3 = u.image3,
+                price = u.price,
+                description = u.description,
+                renterSSN = u.renterSSN,
+                isAds = u.addvertisement != null
+            }).ToList();
+
+            return result;
+        }
+        #endregion
+
+        #region GetById
+        public Unit GetById(int id, string ownerId)
+        {
+            return Context.Units
+                 .FirstOrDefault(u => u.id == id && u.ownerId == ownerId && !u.isDeleted);
+        }
+        #endregion
+
+
+        #region AddUnit
+        public Unit Add(Unit entity)
+        {
+            Context.Units.Add(entity);
+            Save();
+            return entity;
+
+        }
+        #endregion
+
+
+        #region update a single unit
+        public async Task Update(string ownerId, int id, UnitDTO UpdatingRef)
+        {
+            Unit unitFromDB = GetById(id, ownerId);
+
+            //if the unit has a renter & onwer changes theis renter, so old renter id will be removed from the unit
+            // also we have to delete the old renter from community 
+            if (unitFromDB.renterSSN!=null && unitFromDB.renterSSN!=UpdatingRef.renterSSN)
+            {
+                var oldRenterId = unitFromDB.renterId;
+                var oldRenter = await Context.Users.FirstOrDefaultAsync(u => u.Id == oldRenterId);
+
+                if (oldRenter != null)
+                {
+                    oldRenter.communityId = null;
+                    await userManager.UpdateAsync(oldRenter);
+                }
+
+                unitFromDB.renterId = null;
+            }
+
+            unitFromDB.price = UpdatingRef.price;
+            unitFromDB.description = UpdatingRef.description;
+            unitFromDB.status = UpdatingRef.status;
+            unitFromDB.type = UpdatingRef.type;
+            unitFromDB.renterSSN = UpdatingRef.renterSSN;
+
+
+            List<IFormFile?> images = new() { UpdatingRef.image1, UpdatingRef.image2, UpdatingRef.image3 };
+            string?[] currentImagePaths = { unitFromDB.image1, unitFromDB.image2, unitFromDB.image3 };
+
+            for (int i = 0; i < images.Count; i++)
+            {
+                IFormFile? newImage = images[i];
+
+                if (newImage != null && newImage.Length > 0)
+                {
+                    // i need to delete the old image if exists
+                    if (!string.IsNullOrEmpty(currentImagePaths[i]))
+                    {
+                        //string oldFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/Images", currentImagePaths[i]);
+                        //if (File.Exists(oldFilePath))
+                        //{
+                        //    File.Delete(oldFilePath);
+                        //}
+                        await cloudinaryRepository.DeleteImageAsync(currentImagePaths[i]);  
+                    }
+
+                    // Save new image 
+                    //string newFileName = Guid.NewGuid().ToString() + Path.GetExtension(newImage.FileName);
+                    //string newFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/Images", newFileName);
+
+                    //using (var stream = new FileStream(newFilePath, FileMode.Create))
+                    //{
+                    //    await newImage.CopyToAsync(stream);
+                    //}
+                    string newFileName = await cloudinaryRepository.UploadImageAsync(newImage);
+
+                    // update the path
+                    currentImagePaths[i] = newFileName;
+                }
+            }
+
+            // update the patshs in database
+            unitFromDB.image1 = currentImagePaths[0];
+            unitFromDB.image2 = currentImagePaths[1];
+            unitFromDB.image3 = currentImagePaths[2];
+
+            await Context.SaveChangesAsync();
+        }
+
+        #endregion
+
+
+        #region Delete a single unit
+        public async Task<bool> Delete(string ownerId, int id)
+        {
+            Unit unit = GetById(id, ownerId);
+            Addvertisement ad=Context.Addvertisements
+                .FirstOrDefault(a => a.unitId == id);       
+
+            if (unit != null)
+            {
+                if(ad != null)
+                {
+                    // if the unit has an advertisement, we have to delete it first
+                    await advertisementRepository.DeleteAds(ad.id, ownerId);
+                }   
+
+                unit.isDeleted = true;
+                return true;
+            }
+            return false;
+
+        }
+        #endregion
+
+
+        #region Save
+        public void Save()
+        {
+            Context.SaveChanges();
+        }
+        #endregion
+
+
+        public List<Unit> Filter(string? type, string? status, string userId)
+        {
+            var query = Context.Units.AsQueryable();
+
+            if (!string.IsNullOrEmpty(type))
+                query = query.Where(u => u.type.ToLower() == type.ToLower());
+
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(u => u.status.ToLower() == status.ToLower());
+
+            query = query.Where(u => u.ownerId == userId && !u.isDeleted);
+
+            return query.ToList();
+        }
+
+        #region Search
+        public List<Unit> Search(string searchTerm, string userId)
+        {
+            return [..Context.Units.Where(u=> u.description.ToLower().Contains(searchTerm.ToLower())
+&& u.ownerId== userId && !u.isDeleted )];
+        }
+        #endregion
+
+        public int GetCommunityId(string ownerId)
+        {
+            return Context.Communities
+                .Where(c => c.ownerId == ownerId)
+                .Select(c => c.id)
+                .FirstOrDefault();
+        }
+    }
+}
