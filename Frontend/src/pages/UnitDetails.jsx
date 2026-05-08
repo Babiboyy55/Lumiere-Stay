@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, BedDouble, Bath, Square, Home, DollarSign, CheckCircle2, Navigation, Heart, Star, Calendar, MessageSquare } from 'lucide-react';
+import { MapPin, Bed, Bath, Square, Home, DollarSign, Heart, Star, Mail, Phone, Info } from 'lucide-react';
 import api from '../api/api';
-import Modal from '../components/Modal';
 import { AuthContext } from '../context/AuthContext';
 
 const UnitDetails = () => {
@@ -11,295 +10,237 @@ const UnitDetails = () => {
   const { user } = useContext(AuthContext);
   const [unit, setUnit] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeImage, setActiveImage] = useState(null);
   const [isLiked, setIsLiked] = useState(false);
-  
-  // Modal states
-  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showDepositModal, setShowDepositModal] = useState(false);
-
-  // Form states
-  const [reviewContent, setReviewContent] = useState('');
-  const [reviewRate, setReviewRate] = useState(5);
-  const [appointmentDate, setAppointmentDate] = useState('');
+  const [showPhone, setShowPhone] = useState(false);
 
   useEffect(() => {
     const fetchUnitDetails = async () => {
       try {
         const response = await api.get(`/Unit/${id}`);
-        setUnit(response.data);
-        setActiveImage(response.data.image1);
+        if (response.data && response.data.id) {
+          setUnit(response.data);
+        } else {
+          throw new Error("Empty data");
+        }
       } catch (err) {
-        console.error("Failed to fetch unit details", err);
-        const mockUnit = { 
+        console.warn("Using mock data for unit", id);
+        setUnit({ 
           id, 
           type: 'Phòng trọ cao cấp', 
           price: 3500000, 
-          city: 'Cầu Giấy, Hà Nội', 
-          street: 'Số 10 Đường Xuân Thủy, Dịch Vọng Hậu', 
+          city: 'Quận 7, TP. Hồ Chí Minh', 
+          street: 'Số 15 Đường số 4, Phường Tân Kiểng', 
           area: 30, 
-          description: 'Phòng trọ mới xây tại trung tâm quận Cầu Giấy, gần các trường đại học Sư Phạm, Báo Chí. Đầy đủ nội thất cơ bản, giờ giấc tự do, an ninh 24/7.',
+          description: 'Phòng trọ mới xây 100%, phong cách Studio hiện đại. \n- Đầy đủ nội thất: Giường, nệm, tủ quần áo, bàn làm việc.\n- Tiện ích: Máy lạnh, tủ lạnh, máy giặt riêng.\n- An ninh: Khóa vân tay, camera 24/7, không chung chủ.\n- Vị trí: Gần Lotte Mart, ĐH Tôn Đức Thắng, ĐH RMIT.',
           status: 'Còn trống',
           electricityNum: '3.500đ/kwh',
           waterNum: '100.000đ/người',
-          communityId: 1,
-          image1: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
-          image2: 'https://images.unsplash.com/photo-1502672260266-1c1c2f156269?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
-          image3: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
-        };
-        setUnit(mockUnit);
-        setActiveImage(mockUnit.image1);
+          image1: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1000&q=80',
+          image2: 'https://images.unsplash.com/photo-1502672260266-1c1c2f156269?auto=format&fit=crop&w=1000&q=80',
+          image3: 'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1000&q=80',
+          ownerName: 'Nguyễn Văn A',
+          ownerPhone: '0901 234 567'
+        });
       } finally {
         setLoading(false);
       }
     };
     fetchUnitDetails();
+    window.scrollTo(0, 0);
   }, [id]);
 
-  const handleToggleLike = async () => {
-    if (!user) {
-      alert("Vui lòng đăng nhập để thực hiện tính năng này");
-      return;
-    }
-    // Simulate like for now
-    setIsLiked(!isLiked);
-  };
-
-  const handleBookAppointment = async (e) => {
-    e.preventDefault();
-    try {
-      // In a real app, you'd fetch available slots first
-      // This is a simplified version using the Reservation API
-      await api.post('/Reservation', {
-        appointmentId: 1, // This should be a dynamic ID from a slot picker
-        name: user?.userName || "Khách",
-        email: user?.email || "guest@example.com",
-        phoneNumber: "0901234567"
-      });
-      alert("Đặt lịch thành công! Quản lý sẽ liên hệ với bạn sớm.");
-      setShowAppointmentModal(false);
-    } catch (err) {
-      alert("Có lỗi xảy ra khi đặt lịch.");
-    }
-  };
-
-  const handleSubmitReview = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      alert("Chỉ người thuê phòng mới có thể đánh giá");
-      return;
-    }
-    try {
-      const formData = new FormData();
-      formData.append('content', reviewContent);
-      formData.append('rate', reviewRate);
-      
-      await api.post('/Review', formData);
-      alert("Cảm ơn bạn đã đánh giá!");
-      setShowReviewModal(false);
-      setReviewContent('');
-    } catch (err) {
-      alert(err.response?.data?.message || "Lỗi khi gửi đánh giá.");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ fontSize: '1.25rem', color: 'var(--primary)' }}>Đang tải thông tin phòng...</div>
-      </div>
-    );
-  }
-
-  if (!unit) return <div style={{ padding: '5rem', textAlign: 'center' }}>Không tìm thấy phòng trọ này.</div>;
+  if (loading) return <div className="ud-loading">Đang tải thông tin...</div>;
+  if (!unit) return <div className="ud-error">Không tìm thấy thông tin phòng này.</div>;
 
   const images = [unit.image1, unit.image2, unit.image3].filter(Boolean);
 
   return (
-    <div className="container" style={{ padding: '3rem 1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
-          <Navigation size={16} style={{ transform: 'rotate(-90deg)' }} /> Quay lại danh sách
-        </Link>
-        <button 
-          onClick={handleToggleLike}
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem', 
-            padding: '0.5rem 1rem', 
-            borderRadius: 'var(--radius-md)',
-            background: isLiked ? 'rgba(239, 68, 68, 0.1)' : 'var(--surface)',
-            color: isLiked ? 'var(--error)' : 'var(--text-muted)',
-            border: '1px solid ' + (isLiked ? 'var(--error)' : 'var(--border)'),
-            transition: 'all 0.2s'
-          }}
-        >
-          <Heart size={20} fill={isLiked ? 'var(--error)' : 'none'} />
-          {isLiked ? 'Đã yêu thích' : 'Yêu thích'}
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '3rem' }}>
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', fontWeight: '500', marginBottom: '0.5rem' }}>
-                <Home size={18} /> {unit.type}
-                <span style={{ padding: '0.25rem 0.75rem', background: 'var(--primary-light)', color: 'var(--primary)', borderRadius: '999px', fontSize: '0.75rem', marginLeft: '1rem' }}>
-                  {unit.status}
-                </span>
-              </div>
-              <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--text-main)' }}>{unit.street}</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '1.125rem' }}>
-                <MapPin size={18} /> {unit.city}
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--primary)' }}>
-                {unit.price.toLocaleString('vi-VN')} đ <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: '400' }}>/ tháng</span>
-              </div>
-            </div>
+    <div className="ud">
+      <div className="container">
+        <div className="ud-top-bar">
+          <div className="ud-breadcrumb">
+            <Link to="/">Trang chủ</Link> / <Link to="/phong-tro">Phòng trọ</Link> / <span>Chi tiết</span>
           </div>
+          <div className="ud-actions">
+            <button className="ud-action-btn" onClick={() => setIsLiked(!isLiked)}>
+              <Heart size={18} fill={isLiked ? '#ef4444' : 'none'} color={isLiked ? '#ef4444' : 'currentColor'} /> 
+              {isLiked ? 'Đã lưu' : 'Lưu tin'}
+            </button>
+          </div>
+        </div>
 
-          <div style={{ marginBottom: '2rem' }}>
-            <motion.div 
-              key={activeImage}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              style={{ width: '100%', height: '500px', borderRadius: 'var(--radius-xl)', overflow: 'hidden', marginBottom: '1rem', boxShadow: 'var(--shadow-md)' }}
-            >
-              <img src={activeImage} alt="Phòng trọ" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </motion.div>
+        <div className="ud-gallery">
+          <div className="ud-gallery__main">
+            <img src={images[0] || 'https://via.placeholder.com/800x500'} alt="Main" />
+          </div>
+          <div className="ud-gallery__side">
+            {images.slice(1, 3).map((img, i) => (
+              <div key={i} className="ud-gallery__thumb">
+                <img src={img} alt={`Thumb ${i}`} />
+              </div>
+            ))}
+            {images.length < 2 && <div className="ud-gallery__placeholder">Ảnh đang cập nhật</div>}
+          </div>
+        </div>
+
+        <div className="ud-content-grid">
+          <div className="ud-main-info">
+            <div className="ud-badge-row">
+              <span className="ud-tag">{unit.type}</span>
+              <span className="ud-status-badge"><Info size={14} /> Tin đã xác thực</span>
+            </div>
             
-            <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-              {images.map((img, idx) => (
-                <div 
-                  key={idx} 
-                  onClick={() => setActiveImage(img)}
-                  style={{ 
-                    width: '120px', height: '80px', borderRadius: 'var(--radius-md)', overflow: 'hidden', cursor: 'pointer',
-                    border: activeImage === img ? '3px solid var(--primary)' : '3px solid transparent',
-                    opacity: activeImage === img ? 1 : 0.7, transition: 'all 0.2s ease'
-                  }}
-                >
-                  <img src={img} alt={`Thumbnail ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <h1 className="ud-title">{unit.street}</h1>
+            <div className="ud-location">
+              <MapPin size={18} /> <span>{unit.city}</span>
+            </div>
+
+            <div className="ud-stats-bar">
+              <div className="ud-stat">
+                <span className="ud-stat__label">Mức giá</span>
+                <span className="ud-stat__value">{(unit.price || 0).toLocaleString('vi-VN')} đ/tháng</span>
+              </div>
+              <div className="ud-stat">
+                <span className="ud-stat__label">Diện tích</span>
+                <span className="ud-stat__value">{unit.area || 0} m²</span>
+              </div>
+              <div className="ud-stat">
+                <span className="ud-stat__label">Trạng thái</span>
+                <span className="ud-stat__value text-success">{unit.status || 'Còn trống'}</span>
+              </div>
+            </div>
+
+            <div className="ud-section">
+              <h2 className="ud-section__title">Đặc điểm bất động sản</h2>
+              <div className="ud-specs-grid">
+                <div className="ud-spec-item"><Bed size={20} /> <span>1 Phòng ngủ</span></div>
+                <div className="ud-spec-item"><Bath size={20} /> <span>1 Phòng tắm</span></div>
+                <div className="ud-spec-item"><Square size={20} /> <span>Tầng cao thoáng</span></div>
+                <div className="ud-spec-item"><Home size={20} /> <span>Có ban công</span></div>
+              </div>
+            </div>
+
+            <div className="ud-section">
+              <h2 className="ud-section__title">Thông tin mô tả</h2>
+              <div className="ud-description">{unit.description}</div>
+            </div>
+
+            <div className="ud-section">
+              <h2 className="ud-section__title">Chi phí khác</h2>
+              <div className="ud-costs-grid">
+                <div className="ud-cost-card">
+                  <span className="ud-cost-label">Tiền điện</span>
+                  <span className="ud-cost-value">{unit.electricityNum || 'Theo giá nhà nước'}</span>
                 </div>
-              ))}
+                <div className="ud-cost-card">
+                  <span className="ud-cost-label">Tiền nước</span>
+                  <span className="ud-cost-value">{unit.waterNum || 'Theo giá nhà nước'}</span>
+                </div>
+                <div className="ud-cost-card">
+                  <span className="ud-cost-label">Phí dịch vụ</span>
+                  <span className="ud-cost-value">Miễn phí</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="glass" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', padding: '1.5rem', borderRadius: 'var(--radius-lg)', marginBottom: '3rem', textAlign: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-              <Square size={24} color="var(--primary)" />
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Diện tích</span>
-              <span style={{ fontWeight: '600' }}>{unit.area} m²</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-              <BedDouble size={24} color="var(--primary)" />
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Phòng ngủ</span>
-              <span style={{ fontWeight: '600' }}>1 Giường</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-              <Bath size={24} color="var(--primary)" />
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Phòng tắm</span>
-              <span style={{ fontWeight: '600' }}>1 Phòng</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-              <Star size={24} color="var(--accent)" />
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Đánh giá</span>
-              <span style={{ fontWeight: '600' }}>4.8/5</span>
-            </div>
-          </div>
+          <aside className="ud-sidebar">
+            <div className="ud-owner-card">
+              <div className="ud-owner__info">
+                <div className="ud-owner__avatar">
+                  {unit.ownerName?.charAt(0) || 'U'}
+                </div>
+                <div>
+                  <h3 className="ud-owner__name">{unit.ownerName || 'Chủ phòng trọ'}</h3>
+                  <p className="ud-owner__status">Đang hoạt động</p>
+                </div>
+              </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '3rem' }} className="md-col">
-            <div>
-              <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Mô tả chi tiết</h2>
-              <p style={{ color: 'var(--text-main)', lineHeight: '1.8', whiteSpace: 'pre-line', marginBottom: '2rem' }}>{unit.description}</p>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-                <h2 style={{ fontSize: '1.5rem' }}>Đánh giá từ người thuê</h2>
-                <button onClick={() => setShowReviewModal(true)} style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '500' }}>
-                  <MessageSquare size={18} /> Viết đánh giá
+              <div className="ud-owner__actions">
+                <button className="btn btn-primary w-full ud-btn-phone" onClick={() => setShowPhone(true)}>
+                  <Phone size={18} /> {showPhone ? (unit.ownerPhone || '0901 234 567') : 'Bấm để hiện số'}
+                </button>
+                <button className="btn btn-outline w-full ud-btn-zalo" onClick={() => window.open(`https://zalo.me/${(unit.ownerPhone || '0901234567').replace(/\s/g, '')}`, '_blank')}>
+                  Chat qua Zalo
                 </button>
               </div>
-              <div style={{ padding: '1rem', background: 'var(--primary-light)', borderRadius: 'var(--radius-md)', color: 'var(--primary)', fontSize: '0.875rem', textAlign: 'center' }}>
-                Hiện chưa có đánh giá nào cho khu trọ này. Hãy là người đầu tiên!
-              </div>
             </div>
 
-            <div>
-              <div className="glass" style={{ padding: '2rem', borderRadius: 'var(--radius-lg)', position: 'sticky', top: '100px' }}>
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem' }}>Quan tâm phòng này?</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <button onClick={() => setShowAppointmentModal(true)} className="btn btn-primary" style={{ width: '100%', padding: '1rem', gap: '0.5rem' }}>
-                    <Calendar size={18} /> Đặt lịch xem phòng
-                  </button>
-                  <button onClick={() => setShowDepositModal(true)} className="btn btn-outline" style={{ width: '100%', padding: '1rem', gap: '0.5rem' }}>
-                    <DollarSign size={18} /> Đặt cọc giữ chỗ
-                  </button>
-                </div>
-              </div>
+            <div className="ud-tips-card">
+              <h4>Lưu ý an toàn</h4>
+              <ul>
+                <li>Không nên đặt cọc tiền trước khi xem phòng.</li>
+                <li>Kiểm tra kỹ hợp đồng thuê nhà.</li>
+              </ul>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
 
-      {/* Appointment Modal */}
-      <Modal isOpen={showAppointmentModal} onClose={() => setShowAppointmentModal(false)} title="Đặt lịch xem phòng">
-        <form onSubmit={handleBookAppointment}>
-          <div className="input-group">
-            <label className="input-label">Chọn ngày & giờ</label>
-            <input type="datetime-local" className="input-field" required value={appointmentDate} onChange={(e) => setAppointmentDate(e.target.value)} />
-          </div>
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-            Quản lý sẽ xác nhận lịch hẹn của bạn qua số điện thoại hoặc email.
-          </p>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Xác nhận lịch hẹn</button>
-        </form>
-      </Modal>
-
-      {/* Review Modal */}
-      <Modal isOpen={showReviewModal} onClose={() => setShowReviewModal(false)} title="Viết đánh giá">
-        <form onSubmit={handleSubmitReview}>
-          <div className="input-group">
-            <label className="input-label">Số sao</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {[1, 2, 3, 4, 5].map(num => (
-                <Star 
-                  key={num} size={24} 
-                  fill={num <= reviewRate ? 'var(--accent)' : 'none'} 
-                  color={num <= reviewRate ? 'var(--accent)' : 'var(--border)'}
-                  onClick={() => setReviewRate(num)}
-                  style={{ cursor: 'pointer' }}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="input-group">
-            <label className="input-label">Nội dung</label>
-            <textarea 
-              className="input-field" rows="4" placeholder="Cảm nhận của bạn về phòng trọ và chủ trọ..."
-              value={reviewContent} onChange={(e) => setReviewContent(e.target.value)} required
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Gửi đánh giá</button>
-        </form>
-      </Modal>
-
-      {/* Deposit Modal Simulation */}
-      <Modal isOpen={showDepositModal} onClose={() => setShowDepositModal(false)} title="Đặt cọc giữ chỗ">
-        <div style={{ textAlign: 'center' }}>
-          <DollarSign size={48} color="var(--primary)" style={{ marginBottom: '1rem' }} />
-          <p style={{ marginBottom: '1.5rem' }}>Bạn cần thanh toán <strong>1.000.000 đ</strong> để giữ chỗ cho phòng này trong 3 ngày.</p>
-          <button onClick={() => alert("Tính năng thanh toán Stripe đang được tích hợp...")} className="btn btn-primary" style={{ width: '100%' }}>Thanh toán qua Stripe</button>
-        </div>
-      </Modal>
-
       <style>{`
-        @media (max-width: 768px) {
-          .md-col { grid-template-columns: 1fr !important; }
+        .ud { background: #f8fafc; min-height: 100vh; padding-bottom: 80px; }
+        .ud-loading, .ud-error { padding: 150px; text-align: center; font-size: 18px; color: #64748b; }
+        
+        .ud-top-bar { padding: 100px 0 20px; display: flex; justify-content: space-between; align-items: center; }
+        .ud-breadcrumb { font-size: 13px; color: #64748b; }
+        .ud-breadcrumb a { color: #1e62d0; }
+        .ud-actions { display: flex; gap: 15px; }
+        .ud-action-btn { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #475569; padding: 8px 12px; border-radius: 8px; transition: 0.2s; }
+        .ud-action-btn:hover { background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        .ud-gallery { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; height: 450px; margin-bottom: 30px; }
+        .ud-gallery img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+        .ud-gallery__side { display: grid; grid-template-rows: 1fr 1fr; gap: 15px; }
+        .ud-gallery__placeholder { background: #e2e8f0; border-radius: 12px; display: grid; place-items: center; color: #94a3b8; font-weight: 600; font-size: 14px; }
+
+        .ud-content-grid { display: grid; grid-template-columns: 1fr 350px; gap: 40px; align-items: flex-start; }
+        
+        .ud-main-info { background: white; padding: 30px; border-radius: 16px; border: 1px solid #e2e8f0; }
+        .ud-badge-row { display: flex; gap: 12px; margin-bottom: 15px; }
+        .ud-tag { background: #eff6ff; color: #1e62d0; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+        .ud-status-badge { display: flex; align-items: center; gap: 4px; color: #10b981; font-size: 12px; font-weight: 700; }
+        
+        .ud-title { font-size: 28px; font-weight: 800; color: #1e293b; margin-bottom: 12px; line-height: 1.3; }
+        .ud-location { display: flex; align-items: center; gap: 6px; color: #64748b; font-size: 15px; margin-bottom: 25px; }
+        
+        .ud-stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; margin-bottom: 30px; }
+        .ud-stat { display: flex; flex-direction: column; gap: 4px; }
+        .ud-stat__label { font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+        .ud-stat__value { font-size: 18px; font-weight: 800; color: #1e293b; }
+        .text-success { color: #10b981; }
+
+        .ud-section { margin-bottom: 35px; }
+        .ud-section__title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; }
+        
+        .ud-specs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .ud-spec-item { display: flex; align-items: center; gap: 12px; color: #475569; font-weight: 500; }
+        
+        .ud-description { color: #475569; line-height: 1.8; white-space: pre-line; font-size: 15px; }
+        
+        .ud-costs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .ud-cost-card { padding: 15px; border-radius: 10px; border: 1px solid #f1f5f9; text-align: center; }
+        .ud-cost-label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 5px; }
+        .ud-cost-value { font-weight: 700; color: #1e293b; }
+
+        .ud-sidebar { position: sticky; top: 100px; display: flex; flex-direction: column; gap: 20px; }
+        .ud-owner-card { background: white; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .ud-owner__info { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
+        .ud-owner__avatar { width: 50px; height: 50px; border-radius: 50%; background: #1e62d0; color: white; display: grid; place-items: center; font-size: 20px; font-weight: 700; }
+        .ud-owner__name { font-size: 16px; font-weight: 700; color: #1e293b; }
+        .ud-owner__status { font-size: 12px; color: #10b981; font-weight: 600; }
+        
+        .ud-owner__actions { display: flex; flex-direction: column; gap: 12px; }
+        .ud-btn-phone { height: 48px; font-size: 16px; background: #10b981; }
+        .ud-btn-phone:hover { background: #059669; }
+        .ud-btn-zalo { height: 48px; font-size: 16px; color: #1e62d0; border-color: #1e62d0; }
+
+        .ud-tips-card { background: #fffbeb; padding: 20px; border-radius: 12px; border: 1px solid #fef3c7; }
+        .ud-tips-card h4 { font-size: 14px; font-weight: 700; color: #92400e; margin-bottom: 12px; }
+        .ud-tips-card ul { padding-left: 20px; font-size: 13px; color: #92400e; display: flex; flex-direction: column; gap: 8px; }
+
+        @media (max-width: 992px) {
+          .ud-content-grid { grid-template-columns: 1fr; }
+          .ud-gallery { height: 300px; }
         }
       `}</style>
     </div>
