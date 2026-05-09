@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api/api';
 
 export const AuthContext = createContext();
@@ -27,7 +27,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await api.post('/Account/Login', { email, password });
+      const response = await api.post('/Account/login', { 
+        userName: email, 
+        password: password 
+      });
+      // Lấy role từ API trả về
       const { token, role, userName, image } = response.data;
       
       localStorage.setItem('token', token);
@@ -36,7 +40,10 @@ export const AuthProvider = ({ children }) => {
       const userInfoResponse = await api.get('/Account/GetUserInfo');
       setUser(userInfoResponse.data);
       
-      return { success: true };
+      return { 
+        success: true, 
+        role: role 
+      };
     } catch (error) {
       console.error("Login error", error);
       return { 
@@ -56,4 +63,8 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+    return useContext(AuthContext);
 };

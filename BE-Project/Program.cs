@@ -1,4 +1,3 @@
-
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
@@ -181,6 +180,33 @@ namespace Lumiere
 
 
             var app = builder.Build();
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                try
+                {
+                    // Đảm bảo bạn đã using namespace chứa class DbSeeder ở trên cùng file Program.cs
+                    // Gọi hàm SeedRolesAndAdminAsync trong DbSeeder.cs
+                    // Sử dụng .Wait() hoặc .GetAwaiter().GetResult() vì hàm Main() này là đồng bộ (void), không phải async Task
+                    DbSeeder.SeedRolesAndAdminAsync(services).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    var logger = services.GetRequiredService<ILogger<Program>>();
+                    logger.LogError(ex, "Đã xảy ra lỗi khi khởi tạo dữ liệu Role và Admin mặc định.");
+                }
+            }
+            // =======================================================
+
+            // Swagger
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
+
+            app.UseStaticFiles();
 
             // Swagger
 

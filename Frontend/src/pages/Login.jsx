@@ -16,12 +16,22 @@ const Login = () => {
     setError('');
     setLoading(true);
 
+    // Gọi hàm login từ AuthContext
     const result = await login(email, password);
     
     if (result.success) {
-      navigate('/');
+      // KIỂM TRA ROLE: Tùy thuộc vào cấu trúc object user của bạn lưu trong AuthContext
+      // Thường nó sẽ nằm ở result.role, result.userData.role, hoặc result.user.role
+      const userRole = result.role || (result.user && result.user.role);
+
+      if (userRole === 'Admin') {
+        navigate('/admin'); // Đưa Admin vào trang quản trị
+      } else {
+        navigate('/'); // Người dùng bình thường về trang chủ
+      }
     } else {
-      setError(result.message);
+      // Hiển thị lỗi từ Backend hoặc AuthContext
+      setError(result.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại!');
     }
     
     setLoading(false);

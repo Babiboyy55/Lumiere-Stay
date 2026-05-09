@@ -26,7 +26,6 @@ namespace Lumiere.Controllers
 
         }
 
-
         #region Registeration
 
         [HttpPost("Register")] // api/Admin/Register
@@ -54,11 +53,7 @@ namespace Lumiere.Controllers
                 return BadRequest(ModelState);
             }
 
-
-
             await userManager.AddToRoleAsync(user, "Admin");
-
-            
 
             return Ok(new { message = "Admin registered successfully" });
         }
@@ -255,6 +250,69 @@ namespace Lumiere.Controllers
             }
             var renters = await adminRepository.GetRentersWithNoCommunity();
             return Ok(renters);
+        }
+        #endregion
+
+        #region Toggle User Status (Khóa/Mở khóa)
+        [HttpPut("ToggleStatus/{id}")]
+        public async Task<IActionResult> ToggleUserStatus(string id)
+        {
+            string adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(adminId) || !User.IsInRole("Admin"))
+            {
+                return Unauthorized();
+            }
+
+            // Tìm user theo ID
+            var user = await userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return NotFound(new { message = "Không tìm thấy người dùng." });
+            }
+
+            // Đảo ngược trạng thái hiện tại (Đang true thành false, đang false thành true)
+            user.isActive = !user.isActive;
+            var result = await userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                return Ok(new { message = "Cập nhật trạng thái thành công.", isActive = user.isActive });
+            }
+            
+            return BadRequest(new { message = "Cập nhật trạng thái thất bại." });
+        }
+        #endregion
+
+        #region Delete User (Xóa tài khoản)
+        [HttpDelete("Delete/{id}")]
+        public async Task<IActionResult> DeleteUser(string id)
+        {
+            string adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(adminId) || !User.IsInRole("Admin"))
+            {
+                return Unauthorized();
+            }
+
+            // Không cho phép Admin tự xóa chính mình
+            if (adminId == id)
+            {
+                return BadRequest(new { message = "Bạn không thể tự xóa tài khoản của chính mình." });
+            }
+
+            var user = await userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                return NotFound(new { message = "Không tìm thấy người dùng." });
+            }
+
+            var result = await userManager.DeleteAsync(user);
+
+            if (result.Succeeded)
+            {
+                return Ok(new { message = "Xóa tài khoản thành công." });
+            }
+            
+            return BadRequest(new { message = "Xóa tài khoản thất bại." });
         }
         #endregion
     }

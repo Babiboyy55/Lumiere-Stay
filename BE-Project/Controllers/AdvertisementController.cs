@@ -153,5 +153,26 @@ namespace Lumiere.Controllers
         }
         #endregion
 
+        #region Admin Delete
+        [HttpDelete("AdminDelete/{id:int}")]
+        public async Task<IActionResult> AdminDelete(int id)
+        {
+            string adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(adminId) || !User.IsInRole("Admin"))
+            {
+                return Unauthorized(new { success = false, message = "Chỉ Admin mới có quyền thực hiện." });
+            }
+
+            // Gọi hàm xóa trong repository. 
+            // Lưu ý: Vì Admin không phải chủ bài đăng, bạn có thể truyền adminId thay cho ownerId 
+            // (Hãy chắc chắn hàm DeleteAds trong Repository của bạn cho phép bỏ qua check ownerId nếu là Admin)
+            bool isDelete = await adsRepository.DeleteAds(id, adminId);
+            if (isDelete)
+            {
+                return Ok(new { success = true, message = "Admin đã xóa bài đăng thành công" });
+            }
+            return BadRequest(new { success = false, message = "Xóa bài đăng thất bại" });
+        }
+        #endregion
     }
 }

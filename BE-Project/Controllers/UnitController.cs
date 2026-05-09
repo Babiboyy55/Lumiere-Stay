@@ -59,7 +59,8 @@ namespace Lumiere.Controllers
                 return Unauthorized();
             }
 
-            if (!ModelState.IsValid) {
+            if (!ModelState.IsValid)
+            {
                 return BadRequest(ModelState);
             }
 
@@ -72,73 +73,68 @@ namespace Lumiere.Controllers
 
 
             Unit unit = new Unit
-        {
-            status = unitDTO.status,
-            price = unitDTO.price,
-            description = unitDTO.description,
-            type = unitDTO.type,
-            street = unitDTO.street,
-            city = unitDTO.city,
-            image1 = imageFromReq1,
-            image2 = imageFromReq2,
-            image3 = imageFromReq3,
-            area = unitDTO.area,
-            renterSSN = unitDTO.renterSSN,
-            buildingNumber = unitDTO.buildingNumber,
-            flatNumber = unitDTO.flatNumber,
-            electricityNum = unitDTO.electricityNum,
-            waterNum = unitDTO.waterNum,
-            gasNum = unitDTO.gasNum,
-            ownerId = _ownerId,
-            communityId = _communityId,
-            isDeleted = false,
+            {
+                status = unitDTO.status,
+                price = unitDTO.price,
+                description = unitDTO.description,
+                type = unitDTO.type,
+                street = unitDTO.street,
+                city = unitDTO.city,
+                image1 = imageFromReq1,
+                image2 = imageFromReq2,
+                image3 = imageFromReq3,
+                area = unitDTO.area,
+                renterSSN = unitDTO.renterSSN,
+                buildingNumber = unitDTO.buildingNumber,
+                flatNumber = unitDTO.flatNumber,
+                electricityNum = unitDTO.electricityNum,
+                waterNum = unitDTO.waterNum,
+                gasNum = unitDTO.gasNum,
+                ownerId = _ownerId,
+                communityId = _communityId,
+                isDeleted = false,
 
-        };
-
-
-
-        Unit result = unitRepo.Add(unit);
-
-        return CreatedAtAction("GetById", new { id = result.id }, result);
-
-    
-
-    
-
-}
+            };
 
 
-#endregion
+
+            Unit result = unitRepo.Add(unit);
+
+            return CreatedAtAction("GetById", new { id = result.id }, result);
+        }
+
+
+        #endregion
 
         #region filterbytype and by status
         [HttpGet("filter")]
         public IActionResult FilterByType([FromQuery] string type, [FromQuery] string status)
         {
-             string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-             List<Unit> units=unitRepo.Filter(type,status,userId);
-             return Ok(units);
+            string userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            List<Unit> units = unitRepo.Filter(type, status, userId);
+            return Ok(units);
         }
         #endregion
- 
+
         #region Search
         [HttpGet("Search")]
         public IActionResult Search([FromQuery] string searchTerm)
         {
-             string ownerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-             List<Unit> units = unitRepo.Search(searchTerm, ownerId);
-             return Ok(units);
- 
+            string ownerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            List<Unit> units = unitRepo.Search(searchTerm, ownerId);
+            return Ok(units);
+
         }
- 
+
         #endregion
 
-       
+
 
         #region Update
         [HttpPut("{id:int}")]
         [RequestSizeLimit(104_857_600)] // 100 MB
         [RequestFormLimits(MultipartBodyLengthLimit = 104_857_600)]
-        public async Task<IActionResult> Update( int id, [FromForm] UnitDTO updatingRef)
+        public async Task<IActionResult> Update(int id, [FromForm] UnitDTO updatingRef)
         {
             string ownerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(ownerId) || !User.IsInRole("Owner"))
@@ -149,7 +145,7 @@ namespace Lumiere.Controllers
             if (ModelState.IsValid)
             {
                 await unitRepo.Update(ownerId, id, updatingRef);
-               
+
                 return Ok(new { success = true });
             }
 
@@ -165,12 +161,12 @@ namespace Lumiere.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             string ownerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if ( await unitRepo.Delete(ownerId, id) == true)
+            if (await unitRepo.Delete(ownerId, id) == true)
             {
                 unitRepo.Save();
-                return Ok(new { success = true, message="Deleted" });
+                return Ok(new { success = true, message = "Deleted" });
             }
-            return BadRequest(new { success = false, message="Bad Request" });
+            return BadRequest(new { success = false, message = "Bad Request" });
         }
         #endregion
     }
