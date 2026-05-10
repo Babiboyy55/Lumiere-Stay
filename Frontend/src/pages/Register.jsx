@@ -12,6 +12,7 @@ const Register = () => {
     lastName: '',
     phone: '',
     password: '',
+    confirmPassword: '',
     role: 'Renter' // Default to Renter
   });
   const [error, setError] = useState('');
@@ -25,17 +26,22 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Mật khẩu và xác nhận mật khẩu không khớp!');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Create FormData for the file-upload compatible endpoint
       const data = new FormData();
       Object.keys(formData).forEach(key => data.append(key, formData[key]));
 
+      // SỬA TẠI ĐÂY: Chỉ cần truyền 'data', Axios sẽ tự động lo phần Header và Boundary một cách hoàn hảo
       const response = await api.post('/Account/Register', data);
       
       if (response.status === 200) {
-        // If it's an owner, they might have an onboarding URL
         if (response.data.onboardingUrl) {
           window.location.href = response.data.onboardingUrl;
         } else {
@@ -45,9 +51,27 @@ const Register = () => {
       }
     } catch (err) {
       console.error("Register error", err);
-      const errorMessage = err.response?.data?.Errors 
-        ? Object.values(err.response.data.Errors).flat().join(', ')
-        : 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.';
+      
+      let errorMessage = 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.';
+      
+      // Xử lý hiển thị lỗi mượt mà và bao quát mọi trường hợp từ .NET
+      if (err.response?.data) {
+        if (err.response.data.errors) {
+          // Lỗi do thiếu trường dữ liệu hoặc sai định dạng email,...
+          errorMessage = Object.values(err.response.data.errors).flat().join('\n');
+        } else if (err.response.data.Errors) {
+          // Lỗi do Identity sinh ra (VD: Mật khẩu yếu, Email trùng,...)
+          errorMessage = Object.values(err.response.data.Errors).flat().join('\n');
+        } else if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        } else if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else {
+          // Fallback cho trường hợp trả về mảng trực tiếp
+          errorMessage = Object.values(err.response.data).flat().join('\n');
+        }
+      }
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -168,6 +192,19 @@ const Register = () => {
               className="input-field" 
               placeholder="••••••••"
               value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <div className="input-group">
+            <label className="input-label">Xác nhận mật khẩu</label>
+            <input 
+              name="confirmPassword"
+              type="password" 
+              className="input-field" 
+              placeholder="••••••••"
+              value={formData.confirmPassword}
               onChange={handleChange}
               required
             />

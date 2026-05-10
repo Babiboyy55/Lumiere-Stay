@@ -40,8 +40,6 @@ namespace Lumiere.Controllers
 
         }
 
-
-
         #region Registeration
         [HttpPost("Register")] // api/Account/Register
         [RequestSizeLimit(104_857_600)] // 100 MB
@@ -57,7 +55,8 @@ namespace Lumiere.Controllers
                 Email = userFromRequest.email,
                 firstName = userFromRequest.firstName,
                 lastName = userFromRequest.lastName,
-                PhoneNumber = userFromRequest.phone
+                PhoneNumber = userFromRequest.phone,
+                isActive = true
             };
 
             IdentityResult result = await userManager.CreateAsync(user, userFromRequest.password);
@@ -338,7 +337,7 @@ namespace Lumiere.Controllers
             sb.AppendLine($"        <h1>Hello, {email}</h1>");
             sb.AppendLine("        <p>You requested to set a new password for your account. Click the button below to set your password:</p>");
             sb.AppendLine($"        <p><a href=\"{resetLink}\" class=\"button\">Set Your Password</a></p>");
-            sb.AppendLine("        <p>If you didn’t request this, please ignore this email.</p>");
+            sb.AppendLine("        <p>If you didnï¿½t request this, please ignore this email.</p>");
             sb.AppendLine("        <p>Thank you,</p>");
             sb.AppendLine("    </div>");
             sb.AppendLine("</body>");

@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.post('/Account/login', { 
         userName: email, 
+        email: email,
         password: password 
       });
       // Lấy role từ API trả về
